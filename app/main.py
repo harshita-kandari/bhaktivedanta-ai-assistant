@@ -2,6 +2,7 @@ from fastapi import FastAPI
 
 from app.api import (
     routes_appointments,
+    routes_assistant,
     routes_calls,
     routes_doctors,
     routes_emergency,
@@ -36,5 +37,6 @@ for router in (
     routes_emergency.router,
     routes_calls.router,
     routes_webhook.router,
+    routes_assistant.router,
 ):
     app.include_router(router, prefix=settings.api_v1_prefix)
