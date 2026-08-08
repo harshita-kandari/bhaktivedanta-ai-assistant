@@ -52,6 +52,17 @@ def booked_slots(
     return {r["time_slot"] for r in rows}
 
 
+def get_slot_row(
+    conn: sqlite3.Connection, doctor_id: int, appointment_date: str, time_slot: str
+) -> Optional[dict]:
+    row = conn.execute(
+        """SELECT id, status FROM appointments
+           WHERE doctor_id = ? AND appointment_date = ? AND time_slot = ? LIMIT 1""",
+        (doctor_id, appointment_date, time_slot),
+    ).fetchone()
+    return dict(row) if row else None
+
+
 def create_appointment(
     conn: sqlite3.Connection,
     doctor_id: int,
@@ -61,13 +72,24 @@ def create_appointment(
     reason: str = "",
     source: str = "assistant",
 ) -> int:
-    cursor = conn.execute(
-        """INSERT INTO appointments (doctor_id, patient_id, appointment_date, time_slot, reason, source)
-           VALUES (?, ?, ?, ?, ?, ?)""",
-        (doctor_id, patient_id, appointment_date, time_slot, reason, source),
-    )
+    existing = get_slot_row(conn, doctor_id, appointment_date, time_slot)
+    if existing:
+        if existing["status"] == "booked":
+            raise ValueError("Slot already booked")
+        cursor = conn.execute(
+            """UPDATE appointments
+               SET patient_id = ?, status = 'booked', reason = ?, source = ?
+               WHERE id = ?""",
+            (patient_id, reason, source, existing["id"]),
+        )
+    else:
+        cursor = conn.execute(
+            """INSERT INTO appointments (doctor_id, patient_id, appointment_date, time_slot, reason, source)
+               VALUES (?, ?, ?, ?, ?, ?)""",
+            (doctor_id, patient_id, appointment_date, time_slot, reason, source),
+        )
     conn.commit()
-    return cursor.lastrowid
+    return existing["id"] if existing else cursor.lastrowid
 
 
 def update_appointment_status(

@@ -13,14 +13,14 @@ def list_appointments(
     status: str | None = None,
     limit: int = Query(default=100, ge=1, le=500),
     offset: int = 0,
-):
+) -> list[dict]:
     return booking.get_appointments(
         doctor_id=doctor_id, patient_id=patient_id, status=status, limit=limit, offset=offset
     )
 
 
 @router.post("", status_code=201)
-def create_appointment(payload: AppointmentCreate):
+def create_appointment(payload: AppointmentCreate) -> dict:
     try:
         return booking.book_appointment(
             doctor_id=payload.doctor_id,
@@ -35,7 +35,7 @@ def create_appointment(payload: AppointmentCreate):
 
 
 @router.get("/{appointment_id}")
-def get_appointment(appointment_id: int):
+def get_appointment(appointment_id: int) -> dict:
     appointments = booking.get_appointments(limit=500)
     for appointment in appointments:
         if appointment["id"] == appointment_id:
@@ -44,7 +44,7 @@ def get_appointment(appointment_id: int):
 
 
 @router.post("/{appointment_id}/cancel")
-def cancel_appointment(appointment_id: int):
+def cancel_appointment(appointment_id: int) -> dict:
     try:
         return booking.cancel_appointment(appointment_id)
     except booking.BookingError as exc:

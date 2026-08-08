@@ -179,7 +179,7 @@ class AIAssistantService:
         if pre_emergency:
             return self._emergency_response(pre_emergency)
 
-        messages: list[dict[str, str]] = [{"role": "system", "content": SYSTEM_PROMPT}]
+        messages: list[dict[str, Any]] = [{"role": "system", "content": SYSTEM_PROMPT}]
         if context.patient_id:
             messages.append(
                 {
@@ -204,31 +204,32 @@ class AIAssistantService:
         messages.append({"role": "user", "content": message})
 
         tool_rounds = 0
-        booking_id: Optional[int] = None
         patient_id: Optional[int] = context.patient_id
+        final: Optional[str] = None
         try:
             client = self._get_client()
             while tool_rounds < settings.max_tool_rounds:
                 result = client.chat(messages, tools=self.tools)
                 if result["tool_calls"]:
+                    messages.append(
+                        {
+                            "role": "assistant",
+                            "content": result["content"] or None,
+                            "tool_calls": [
+                                {
+                                    "id": call["id"],
+                                    "type": "function",
+                                    "function": {
+                                        "name": call["name"],
+                                        "arguments": json_dumps(call["arguments"]),
+                                    },
+                                }
+                                for call in result["tool_calls"]
+                            ],
+                        }
+                    )
                     for call in result["tool_calls"]:
                         tool_result = self.executor.execute(call["name"], call["arguments"])
-                        messages.append(
-                            {
-                                "role": "assistant",
-                                "content": None,
-                                "tool_calls": [
-                                    {
-                                        "id": call["id"],
-                                        "type": "function",
-                                        "function": {
-                                            "name": call["name"],
-                                            "arguments": json_dumps(call["arguments"]),
-                                        },
-                                    }
-                                ],
-                            }
-                        )
                         messages.append(
                             {
                                 "role": "tool",
@@ -246,15 +247,15 @@ class AIAssistantService:
                                     ),
                                 }
                             )
-                        tool_rounds += 1
-                        continue
+                    tool_rounds += 1
+                    continue
                 if result["content"]:
                     final = result["content"]
                     break
                 messages.append(
                     {"role": "user", "content": "Please provide a natural language response."}
                 )
-            else:
+            if final is None:
                 final = (
                     "I'm having trouble processing that right now. Please hold while I "
                     "connect you to our front desk helpline."

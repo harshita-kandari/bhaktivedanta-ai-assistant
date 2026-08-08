@@ -6,7 +6,7 @@ router = APIRouter(prefix="/emergency", tags=["emergency"])
 
 
 @router.post("/check")
-def check_emergency(payload: dict):
+def check_emergency(payload: dict) -> dict:
     message = payload.get("message", "")
     if not message.strip():
         raise HTTPException(status_code=400, detail="message is required")
@@ -17,5 +17,5 @@ def check_emergency(payload: dict):
 
 
 @router.get("/info")
-def emergency_info():
+def emergency_info() -> dict:
     return emergency.emergency_guidance()

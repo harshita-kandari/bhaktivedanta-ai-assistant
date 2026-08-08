@@ -11,12 +11,18 @@ from app.api import (
 )
 from app.core.config import settings
 from app.core.logging import get_logger, setup_logging
-from app.db.database import init_db
+from app.db.database import db_session, init_db
+from app.db.seed import seed_doctors
 
 setup_logging()
 logger = get_logger(__name__)
 
 init_db()
+
+with db_session() as conn:
+    count = conn.execute("SELECT COUNT(*) AS c FROM doctors").fetchone()["c"]
+if count == 0:
+    seed_doctors()
 
 app = FastAPI(
     title=settings.app_name,

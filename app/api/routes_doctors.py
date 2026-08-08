@@ -14,7 +14,7 @@ router = APIRouter(prefix="/doctors", tags=["doctors"])
 def list_doctors(
     department: Optional[str] = Query(default=None),
     active_only: bool = True,
-):
+) -> list[dict]:
     with db_session() as conn:
         return doctors_repo.list_doctors(conn, department=department, active_only=active_only)
 
@@ -26,7 +26,7 @@ def availability(
     department: Optional[str] = None,
     date: Optional[str] = None,
     window_days: int = Query(default=7, ge=1, le=30),
-):
+) -> list[dict]:
     if not doctor_id and not doctor_name and not department:
         raise HTTPException(status_code=400, detail="Provide doctor_id, doctor_name or department")
     if date and window_days != 7:
@@ -49,7 +49,7 @@ def fees(
     doctor_id: Optional[int] = None,
     doctor_name: Optional[str] = None,
     department: Optional[str] = None,
-):
+) -> dict:
     if department:
         result = pricing.get_department_fee_range(department)
         if not result:
@@ -62,7 +62,7 @@ def fees(
 
 
 @router.get("/{doctor_id}")
-def get_doctor(doctor_id: int):
+def get_doctor(doctor_id: int) -> dict:
     with db_session() as conn:
         doctor = doctors_repo.get_doctor_by_id(conn, doctor_id)
     if not doctor:
@@ -71,7 +71,7 @@ def get_doctor(doctor_id: int):
 
 
 @router.post("", status_code=201)
-def create_doctor(payload: DoctorCreate):
+def create_doctor(payload: DoctorCreate) -> dict:
     with db_session() as conn:
         doctor_id = doctors_repo.create_doctor(conn, payload.model_dump())
         doctor = doctors_repo.get_doctor_by_id(conn, doctor_id)

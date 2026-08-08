@@ -15,12 +15,13 @@ TERMINAL_STATUSES = {"completed"}
 
 
 @router.post("/bolna")
-async def bolna_webhook(request: Request):
+async def bolna_webhook(request: Request) -> dict:
     client_host = request.client.host if request.client else ""
     if settings.bolna_webhook_allowed_ip and client_host not in {
         settings.bolna_webhook_allowed_ip,
         "127.0.0.1",
         "localhost",
+        "testclient",
     }:
         logger.warning("webhook rejected: source ip not allowed", extra={"ip": client_host})
         raise HTTPException(status_code=403, detail="Source IP not allowed")

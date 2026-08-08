@@ -9,7 +9,7 @@ router = APIRouter(prefix="/calls", tags=["calls"])
 
 
 @router.post("", status_code=202)
-def place_call(payload: CallPlaceRequest):
+def place_call(payload: CallPlaceRequest) -> dict:
     try:
         client = BolnaClient()
         result = client.place_call(
@@ -33,7 +33,7 @@ def place_call(payload: CallPlaceRequest):
 
 
 @router.get("/{execution_id}")
-def get_execution(execution_id: str):
+def get_execution(execution_id: str) -> dict:
     try:
         client = BolnaClient()
         return client.get_execution(execution_id)

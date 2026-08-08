@@ -7,7 +7,7 @@ router = APIRouter(prefix="/patients", tags=["patients"])
 
 
 @router.post("", status_code=201)
-def register_patient(payload: PatientRegister):
+def register_patient(payload: PatientRegister) -> dict:
     try:
         return patients_service.register_patient(
             full_name=payload.full_name,
@@ -20,12 +20,12 @@ def register_patient(payload: PatientRegister):
 
 
 @router.get("")
-def list_patients(limit: int = Query(default=100, ge=1, le=500), offset: int = 0):
+def list_patients(limit: int = Query(default=100, ge=1, le=500), offset: int = 0) -> list[dict]:
     return patients_service.list_patients(limit=limit, offset=offset)
 
 
 @router.get("/{patient_id}")
-def get_patient(patient_id: int):
+def get_patient(patient_id: int) -> dict:
     patient = patients_service.get_patient_by_id(patient_id)
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
@@ -33,7 +33,7 @@ def get_patient(patient_id: int):
 
 
 @router.get("/by-phone/{phone}")
-def get_patient_by_phone(phone: str):
+def get_patient_by_phone(phone: str) -> dict:
     try:
         patient = patients_service.get_patient_by_phone(phone)
     except patients_service.PatientError as exc:

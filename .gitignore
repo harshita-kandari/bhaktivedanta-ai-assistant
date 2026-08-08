@@ -16,5 +16,7 @@ logs/
 *.db-journal
 *.db-wal
 *.db-shm
+uvicorn*.log
+uvicorn.pid
 .DS_Store
 Thumbs.db

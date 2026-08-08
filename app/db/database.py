@@ -1,13 +1,14 @@
 import sqlite3
 from contextlib import contextmanager
 from pathlib import Path
+from typing import Iterator
 
 from app.core.config import settings
 from app.core.logging import get_logger
 
 logger = get_logger(__name__)
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 
 def _connect(db_path: Path) -> sqlite3.Connection:
@@ -24,7 +25,7 @@ def get_connection() -> sqlite3.Connection:
 
 
 @contextmanager
-def db_session():
+def db_session() -> Iterator[sqlite3.Connection]:
     conn = get_connection()
     try:
         conn.execute("BEGIN")
@@ -38,12 +39,19 @@ def db_session():
 
 
 def init_db() -> None:
-    from app.db.models import SCHEMA_SQL
+    from app.db.models import MIGRATION_V2_SQL, SCHEMA_SQL
 
     conn = _connect(settings.database_file)
     try:
         conn.executescript(SCHEMA_SQL)
         conn.commit()
+        current = conn.execute(
+            "SELECT COALESCE(MAX(version), 0) AS v FROM migrations"
+        ).fetchone()["v"]
+        if current < 2:
+            conn.executescript(MIGRATION_V2_SQL)
+            conn.commit()
+            logger.info("schema migrated to v2")
         logger.info("database initialised", extra={"path": str(settings.database_file)})
     finally:
         conn.close()

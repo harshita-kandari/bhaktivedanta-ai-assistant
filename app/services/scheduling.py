@@ -73,6 +73,8 @@ def get_available_slots(
                     "date": target.isoformat(),
                     "opd_timings": f"{doc['opd_start']} - {doc['opd_end']}",
                     "available_slots": free,
+                    "consultation_fee": doc["consultation_fee"],
+                    "followup_fee": doc["followup_fee"],
                     "next_7_days_slots_available": len(free) > 0,
                 }
             )

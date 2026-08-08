@@ -51,7 +51,7 @@ def upsert_call_log(conn: sqlite3.Connection, data: dict) -> int:
     if existing:
         update_call_log(conn, existing["id"], data)
         return existing["id"]
-    return create_call_log(
+    call_log_id = create_call_log(
         conn,
         execution_id=data["execution_id"],
         agent_id=data.get("agent_id", ""),
@@ -59,6 +59,8 @@ def upsert_call_log(conn: sqlite3.Connection, data: dict) -> int:
         status=data.get("status", "queued"),
         recipient_phone=data.get("recipient_phone", ""),
     )
+    update_call_log(conn, call_log_id, data)
+    return call_log_id
 
 
 def update_call_log(conn: sqlite3.Connection, call_log_id: int, data: dict) -> bool:

@@ -1,3 +1,5 @@
+from dataclasses import asdict
+
 from fastapi import APIRouter, HTTPException
 
 from app.api.schemas import AssistantMessage
@@ -7,7 +9,7 @@ router = APIRouter(prefix="/assistant", tags=["assistant"])
 
 
 @router.post("/chat")
-def chat(payload: AssistantMessage):
+def chat(payload: AssistantMessage) -> dict:
     if not payload.message.strip():
         raise HTTPException(status_code=400, detail="message is required")
     context = CallContext(
@@ -15,4 +17,4 @@ def chat(payload: AssistantMessage):
         patient_id=payload.patient_id,
         phone=payload.phone,
     )
-    return assistant_service.process_message(payload.message, context)
+    return asdict(assistant_service.process_message(payload.message, context))

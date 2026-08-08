@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS appointments (
     source TEXT NOT NULL DEFAULT 'assistant'
         CHECK (source IN ('assistant', 'call', 'web')),
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    UNIQUE (doctor_id, appointment_date, time_slot, status)
+    UNIQUE (doctor_id, appointment_date, time_slot)
 );
 
 CREATE TABLE IF NOT EXISTS call_logs (
@@ -68,4 +68,34 @@ CREATE INDEX IF NOT EXISTS idx_doctors_department ON doctors(department);
 CREATE INDEX IF NOT EXISTS idx_call_logs_execution ON call_logs(execution_id);
 
 INSERT OR IGNORE INTO migrations (version) VALUES (1);
+"""
+
+MIGRATION_V2_SQL = """
+ALTER TABLE appointments RENAME TO appointments_old;
+
+CREATE TABLE appointments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    doctor_id INTEGER NOT NULL REFERENCES doctors(id) ON DELETE RESTRICT,
+    patient_id INTEGER NOT NULL REFERENCES patients(id) ON DELETE RESTRICT,
+    appointment_date TEXT NOT NULL,
+    time_slot TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'booked'
+        CHECK (status IN ('booked', 'cancelled', 'completed')),
+    reason TEXT NOT NULL DEFAULT '',
+    source TEXT NOT NULL DEFAULT 'assistant'
+        CHECK (source IN ('assistant', 'call', 'web')),
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    UNIQUE (doctor_id, appointment_date, time_slot)
+);
+
+INSERT INTO appointments (id, doctor_id, patient_id, appointment_date, time_slot, status, reason, source, created_at)
+SELECT id, doctor_id, patient_id, appointment_date, time_slot, status, reason, source, created_at
+FROM appointments_old
+WHERE id IN (
+    SELECT MAX(id) FROM appointments_old GROUP BY doctor_id, appointment_date, time_slot
+);
+
+DROP TABLE appointments_old;
+
+INSERT INTO migrations (version) VALUES (2);
 """
