@@ -1,6 +1,13 @@
 from fastapi import FastAPI
 
-from app.api import routes_appointments, routes_doctors, routes_emergency, routes_patients
+from app.api import (
+    routes_appointments,
+    routes_calls,
+    routes_doctors,
+    routes_emergency,
+    routes_patients,
+    routes_webhook,
+)
 from app.core.config import settings
 from app.core.logging import get_logger, setup_logging
 from app.db.database import init_db
@@ -27,5 +34,7 @@ for router in (
     routes_patients.router,
     routes_appointments.router,
     routes_emergency.router,
+    routes_calls.router,
+    routes_webhook.router,
 ):
     app.include_router(router, prefix=settings.api_v1_prefix)
