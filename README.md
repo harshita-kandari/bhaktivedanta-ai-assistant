@@ -37,7 +37,7 @@ copy .env.example .env            # then fill in real keys
 | `BOLNA_API_KEY` | Bolna auth (Bearer token, `bn-...`) |
 | `DEEPSEEK_API_KEY` | DeepSeek API key |
 | `BOLNA_AGENT_ID` | Bolna agent UUID (needed for outbound calls) |
-| `BOLNA_WEBHOOK_ALLOWED_IP` | Bolna webhook source IP (default `13.203.39.153`) |
+| `BOLNA_WEBHOOK_ALLOWED_IP` | Comma-separated Bolna webhook source IPs |
 | `DATABASE_PATH` | SQLite file path (default `data/hospital.db`) |
 | `DEEPSEEK_MODEL` | Default `deepseek-chat` |
 | `EMERGENCY_HELPLINE` / `FRONT_DESK_PHONE` | Shown in emergency / fallback replies |
@@ -55,6 +55,7 @@ copy .env.example .env            # then fill in real keys
 | `POST /appointments` | Book appointment (409 on slot conflict) |
 | `POST /appointments/{id}/cancel` | Cancel appointment |
 | `GET /appointments` | List (filter by doctor/patient/status) |
+| `POST /voice/book` | Book by doctor name + patient phone (voice agent; auto-registers patient) |
 | `POST /emergency/check` | Triage check |
 | `GET /emergency/info` | Emergency guidance |
 | `POST /assistant/chat` | AI assistant (DeepSeek tool-use) |
@@ -65,8 +66,42 @@ copy .env.example .env            # then fill in real keys
 
 - Bolna POSTs on every status change; only `completed` carries the full payload.
 - Payloads are stored in `call_logs` (upsert by `execution_id`).
-- No HMAC signature exists; requests from any IP other than
-  `13.203.39.153` are rejected with 403.
+- No HMAC signature exists; requests from any IP other than the Bolna source IPs
+  are rejected with 403. Bolna sends from `13.203.39.153`, `13.126.9.249` and
+  `13.202.133.53`; configure them (comma-separated) in `BOLNA_WEBHOOK_ALLOWED_IP`.
+- Behind a tunnel, the immediate peer is the loopback tunnel, so the original
+  address is read from `X-Forwarded-For`.
+
+## Voice agent wiring (Bolna)
+
+`scripts/wire_bolna.py` connects the live phone agent to this backend:
+
+```bash
+# 1. Expose the backend publicly (the demo setup reuses an ngrok tunnel on :8000)
+ngrok http 8000
+
+# 2. Point the agent at the tunnel and install tools + prompt
+.venv/bin/python scripts/wire_bolna.py --public-base-url https://<your-tunnel-host>
+```
+
+The script is idempotent. It backs up the current agent JSON to `data/`, then:
+
+- adds five custom function tools: `list_doctors`, `check_availability`,
+  `get_doctor_fee`, `book_appointment` (uses `/voice/book`) and `emergency_check`;
+- sets the agent `webhook_url` to `<public-base-url>/api/v1/webhook/bolna`;
+- installs the tool-driven "Bhakti" system prompt.
+
+Use `--dry-run` to print the payload without changing the agent. Bolna blocks
+private/loopback tool URLs, so the public URL must be reachable from the
+internet. Re-running the script is enough after a tunnel URL changes.
+
+## Runtime notes
+
+- `DEEPSEEK_*` can point at any OpenAI-compatible endpoint. The demo config
+  serves `deepseek-v4.1-flash-1017-fast` through Isoquant (`DEEPSEEK_BASE_URL`
+  and `DEEPSEEK_API_KEY`), which supports tool calling.
+- Voice agent LLM/TTS/STT stay on Bolna's managed stack (Azure GPT-4.1 mini,
+  ElevenLabs, Deepgram); the tools above are what connect it to hospital data.
 
 ## Tests
 

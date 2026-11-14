@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import (
     routes_appointments,
@@ -7,6 +8,7 @@ from app.api import (
     routes_doctors,
     routes_emergency,
     routes_patients,
+    routes_voice,
     routes_webhook,
 )
 from app.core.config import settings
@@ -29,7 +31,13 @@ app = FastAPI(
     version=settings.app_version,
     description="AI assistant backend for Bhaktivedanta Hospital & Research Institute",
 )
-
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.get("/health", tags=["system"])
 def health() -> dict:
@@ -42,6 +50,7 @@ for router in (
     routes_appointments.router,
     routes_emergency.router,
     routes_calls.router,
+    routes_voice.router,
     routes_webhook.router,
     routes_assistant.router,
 ):

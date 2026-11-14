@@ -68,6 +68,68 @@ def book_appointment(
         return appointment
 
 
+def book_for_caller(
+    full_name: str,
+    phone: str,
+    doctor_name: str,
+    appointment_date: str,
+    time_slot: str,
+    department: Optional[str] = None,
+    reason: str = "",
+    age: Optional[int] = None,
+    gender: Optional[str] = None,
+) -> dict:
+    """Book an appointment from a phone call using names instead of internal ids.
+
+    Resolves (or registers) the patient by phone and matches the doctor by name,
+    optionally falling back to a unique partial match inside the department.
+    """
+    from app.services import patients as patients_service
+    from app.services.scheduling import is_working_day
+
+    patient = patients_service.get_patient_by_phone(phone)
+    if not patient:
+        patient = patients_service.register_patient(full_name, phone, age, gender)
+
+    with db_session() as conn:
+        doctor = doctors_repo.get_doctor_by_name(conn, doctor_name.strip())
+        if not doctor:
+            candidates = doctors_repo.list_doctors(conn, department=department)
+            matches = [d for d in candidates if doctor_name.strip().lower() in d["name"].lower()]
+            # Seed data can contain duplicate rows for the same doctor.
+            by_name = {d["name"]: d for d in matches}
+            if len(by_name) != 1:
+                available = ", ".join(sorted({d["name"] for d in candidates})) or "none"
+                raise BookingError(
+                    f"Could not find a unique doctor matching '{doctor_name}'"
+                    + (f" in {department}" if department else "")
+                    + f". Available doctors: {available}"
+                )
+            doctor = next(iter(by_name.values()))
+
+    if department and doctor["department"].lower() != department.lower():
+        raise BookingError(
+            f"{doctor['name']} is in {doctor['department']}, not {department}"
+        )
+
+    try:
+        target = date.fromisoformat(appointment_date)
+        working = is_working_day(doctor, target)
+    except ValueError as exc:
+        raise BookingError(f"Invalid appointment date: {appointment_date}") from exc
+    if not working:
+        raise BookingError(f"{doctor['name']} is not available on {appointment_date}")
+
+    return book_appointment(
+        doctor_id=doctor["id"],
+        patient_id=patient["id"],
+        appointment_date=appointment_date,
+        time_slot=time_slot,
+        reason=reason,
+        source="call",
+    )
+
+
 def cancel_appointment(appointment_id: int) -> dict:
     with db_session() as conn:
         appointment = appointments_repo.get_appointment_by_id(conn, appointment_id)

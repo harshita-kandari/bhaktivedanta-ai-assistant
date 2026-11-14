@@ -1,6 +1,6 @@
 # Bhaktivedanta Hospital AI Assistant — Architecture Plan
 
-**Status:** Planning (no code written yet)
+**Status:** Implemented (backend, DeepSeek tool-use, Bolna voice tools)
 **Stack:** FastAPI · SQLite · DeepSeek (AI) · Bolna (voice calls)
 
 ## 1. System Overview
@@ -156,7 +156,7 @@ Notes:
 | `BOLNA_API_KEY` | Bolna auth (already in `.env`) |
 | `DEEPSEEK_API_KEY` | DeepSeek auth (already in `.env`) |
 | `BOLNA_AGENT_ID` | Agent UUID — fill later (blank for now) |
-| `BOLNA_WEBHOOK_ALLOWED_IP` | `13.203.39.153` |
+| `BOLNA_WEBHOOK_ALLOWED_IP` | 13.203.39.153,13.126.9.249,13.202.133.53 |
 | `DATABASE_PATH` | `data/hospital.db` |
 | `DEEPSEEK_MODEL` | `deepseek-chat` (default) |
 

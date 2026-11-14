@@ -52,7 +52,18 @@ def get_available_slots(
             doctors = [doc] if doc else []
         elif doctor_name:
             doc = doctors_repo.get_doctor_by_name(conn, doctor_name)
-            doctors = [doc] if doc else []
+            if doc:
+                doctors = [doc]
+            else:
+                # Voice callers often say just a surname; match partially and
+                # de-duplicate repeated seed rows by name.
+                candidates = doctors_repo.list_doctors(conn, department=department)
+                matches = {
+                    d["name"]: d
+                    for d in candidates
+                    if doctor_name.strip().lower() in d["name"].lower()
+                }
+                doctors = list(matches.values())
         elif department:
             doctors = doctors_repo.list_doctors(conn, department=department)
         else:

@@ -31,6 +31,11 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
 
     @property
+    def bolna_webhook_allowed_ips(self) -> set[str]:
+        """Bolna sends post-call webhooks from a fixed set of source IPs."""
+        return {ip.strip() for ip in self.bolna_webhook_allowed_ip.split(",") if ip.strip()}
+
+    @property
     def database_dir(self) -> Path:
         path = Path(self.database_path)
         return path.parent if path.parent != Path(".") else BASE_DIR / path.parent

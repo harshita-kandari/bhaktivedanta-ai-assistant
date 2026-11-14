@@ -12,17 +12,29 @@ logger = get_logger(__name__)
 router = APIRouter(prefix="/webhook", tags=["webhook"])
 
 TERMINAL_STATUSES = {"completed"}
+LOOPBACK_HOSTS = {"127.0.0.1", "::1", "localhost"}
+
+
+def _client_ip(request: Request) -> str:
+    """Real caller IP, accounting for the local tunnel in front of the server.
+
+    Bolna posts from a fixed set of public IPs, but behind ngrok/cloudflared the
+    immediate peer is the loopback tunnel. In that case the original address is
+    only available in ``X-Forwarded-For``.
+    """
+    host = request.client.host if request.client else ""
+    if host in LOOPBACK_HOSTS:
+        forwarded = request.headers.get("x-forwarded-for", "")
+        if forwarded:
+            return forwarded.split(",")[0].strip()
+    return host
 
 
 @router.post("/bolna")
 async def bolna_webhook(request: Request) -> dict:
-    client_host = request.client.host if request.client else ""
-    if settings.bolna_webhook_allowed_ip and client_host not in {
-        settings.bolna_webhook_allowed_ip,
-        "127.0.0.1",
-        "localhost",
-        "testclient",
-    }:
+    client_host = _client_ip(request)
+    allowed_ips = settings.bolna_webhook_allowed_ips
+    if allowed_ips and client_host not in allowed_ips | LOOPBACK_HOSTS | {"testclient"}:
         logger.warning("webhook rejected: source ip not allowed", extra={"ip": client_host})
         raise HTTPException(status_code=403, detail="Source IP not allowed")
 

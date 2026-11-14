@@ -53,6 +53,24 @@ class CallPlaceRequest(BaseModel):
     retry_config: dict = {}
 
 
+class VoiceBookRequest(BaseModel):
+    """Single-call booking payload used by the Bolna voice agent.
+
+    The voice agent only has the caller's spoken name, phone, doctor and slot,
+    so patient lookup/registration and doctor name resolution happen server-side.
+    """
+
+    full_name: str
+    phone: str
+    doctor_name: str
+    appointment_date: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
+    time_slot: str = Field(pattern=r"^\d{2}:\d{2}$")
+    department: Optional[Department] = None
+    reason: str = ""
+    age: Optional[int] = Field(default=None, ge=0, le=150)
+    gender: Optional[Literal["male", "female", "other"]] = None
+
+
 class AssistantMessage(BaseModel):
     message: str
     patient_id: Optional[int] = None
