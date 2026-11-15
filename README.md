@@ -138,6 +138,18 @@ curl -X POST http://127.0.0.1:8000/api/v1/calls \
 - Outbound calls use the account's telephony caller ID; inbound calling needs a
   Bolna number assigned to the agent.
 
+## Excel export
+
+Call data, appointments, doctors and patients in one workbook:
+
+- Page: **Download call data (.xlsx)** in the phone-call card.
+- API: `GET /api/v1/export/calls.xlsx`
+- CLI: `.venv/bin/python scripts/export_call_data.py`
+
+Sheets: **Summary**, **Calls**, **Appointments**, **Doctors**, **Patients**.
+The file is generated on demand; SQLite remains the live source of truth.
+Queued or ringing calls have no transcript yet, so those cells are blank.
+
 ## Tests
 
 ```bash
