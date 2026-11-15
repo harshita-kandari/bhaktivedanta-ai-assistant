@@ -16,3 +16,7 @@ def test_export_returns_workbook(client: TestClient) -> None:
         workbook.sheetnames
     )
     assert workbook["Doctors"].max_row >= 2
+    call_headers = [cell.value for cell in workbook["Calls"][1]]
+    assert {"Patient", "Doctor", "Requirement", "Appointment date", "Time"} <= set(
+        call_headers
+    )

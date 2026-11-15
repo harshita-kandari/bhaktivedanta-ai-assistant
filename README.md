@@ -147,6 +147,11 @@ Call data, appointments, doctors and patients in one workbook:
 - CLI: `.venv/bin/python scripts/export_call_data.py`
 
 Sheets: **Summary**, **Calls**, **Appointments**, **Doctors**, **Patients**.
+
+The **Calls** sheet includes patient, doctor, requirement, appointment date and
+time for each call. Those come from the matching booking (by phone number); if
+there is no booking they fall back to values extracted from the call, and stay
+blank when neither exists. **Appointments** includes the reason for the visit.
 The file is generated on demand; SQLite remains the live source of truth.
 Queued or ringing calls have no transcript yet, so those cells are blank.
 

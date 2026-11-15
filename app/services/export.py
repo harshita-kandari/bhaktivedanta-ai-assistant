@@ -39,6 +39,44 @@ def _call_type(telephony_data) -> str:
         return ""
 
 
+def _as_json(value):
+    if not value:
+        return {}
+    try:
+        return json.loads(value) if isinstance(value, str) else value
+    except (ValueError, TypeError):
+        return {}
+
+
+def _search(data, keys: set[str], depth: int = 0) -> str:
+    """Find the first non-empty value for any of these key names, nested or not."""
+    if depth > 6:
+        return ""
+    if isinstance(data, dict):
+        for key, value in data.items():
+            if key.lower() in keys and isinstance(value, (str, int, float)):
+                text = str(value).strip()
+                if text:
+                    return text
+        for value in data.values():
+            found = _search(value, keys, depth + 1)
+            if found:
+                return found
+    elif isinstance(data, list):
+        for item in data:
+            found = _search(item, keys, depth + 1)
+            if found:
+                return found
+    return ""
+
+
+NAME_KEYS = {"patient_name", "patient", "full_name", "name", "caller_name"}
+DOCTOR_KEYS = {"doctor", "doctor_name", "preferred_doctor", "specialist"}
+REASON_KEYS = {"reason", "requirement", "symptoms", "purpose", "concern", "issue"}
+DATE_KEYS = {"appointment_date", "date", "preferred_date"}
+TIME_KEYS = {"time_slot", "time", "preferred_time"}
+
+
 def _add_sheet(workbook, title, headers, rows, widths, wrap_columns=()):
     sheet = workbook.create_sheet(title)
     sheet.append(headers)
@@ -68,7 +106,7 @@ def build_workbook() -> Workbook:
                 """
                 SELECT a.id, d.name AS doctor, d.department, p.full_name AS patient,
                        p.phone, a.appointment_date, a.time_slot, a.status, a.source,
-                       d.consultation_fee, a.created_at
+                       a.reason, d.consultation_fee, a.created_at
                 FROM appointments a
                 JOIN doctors d ON d.id = a.doctor_id
                 JOIN patients p ON p.id = a.patient_id
@@ -109,6 +147,35 @@ def build_workbook() -> Workbook:
     summary.column_dimensions["B"].width = 24
     summary.freeze_panes = "A2"
 
+    by_phone = {}
+    for appointment in appointments:  # newest first
+        by_phone.setdefault(appointment["phone"], appointment)
+
+    call_rows = []
+    for call in calls:
+        appointment = by_phone.get(call["recipient_phone"]) or {}
+        extracted = _as_json(call.get("extracted_data"))
+        call_rows.append(
+            [
+                call["id"],
+                call["execution_id"],
+                call["status"],
+                call["direction"],
+                call["recipient_phone"],
+                appointment.get("patient") or _search(extracted, NAME_KEYS),
+                appointment.get("doctor") or _search(extracted, DOCTOR_KEYS),
+                appointment.get("reason") or _search(extracted, REASON_KEYS),
+                appointment.get("appointment_date") or _search(extracted, DATE_KEYS),
+                appointment.get("time_slot") or _search(extracted, TIME_KEYS),
+                float(call.get("conversation_duration") or 0),
+                float(call.get("total_cost") or 0),
+                "YES" if call.get("emergency_flag") else "",
+                call["created_at"],
+                _clip(call.get("transcript")),
+                _clip(call.get("extracted_data")),
+            ]
+        )
+
     _add_sheet(
         workbook,
         "Calls",
@@ -118,33 +185,21 @@ def build_workbook() -> Workbook:
             "Status",
             "Direction",
             "Phone",
+            "Patient",
+            "Doctor",
+            "Requirement",
+            "Appointment date",
+            "Time",
             "Duration (s)",
             "Cost (INR)",
             "Emergency",
-            "Call type",
             "Created",
             "Transcript",
             "Extracted data",
         ],
-        [
-            [
-                call["id"],
-                call["execution_id"],
-                call["status"],
-                call["direction"],
-                call["recipient_phone"],
-                float(call.get("conversation_duration") or 0),
-                float(call.get("total_cost") or 0),
-                "YES" if call.get("emergency_flag") else "",
-                _call_type(call.get("telephony_data")),
-                call["created_at"],
-                _clip(call.get("transcript")),
-                _clip(call.get("extracted_data")),
-            ]
-            for call in calls
-        ],
-        [6, 38, 11, 10, 16, 12, 11, 11, 11, 20, 70, 50],
-        wrap_columns=(11, 12),
+        call_rows,
+        [6, 38, 11, 10, 16, 22, 22, 30, 14, 8, 10, 10, 10, 20, 70, 50],
+        wrap_columns=(8, 15, 16),
     )
 
     _add_sheet(
@@ -160,6 +215,7 @@ def build_workbook() -> Workbook:
             "Time",
             "Status",
             "Source",
+            "Reason",
             "Fee (INR)",
             "Created",
         ],
@@ -174,12 +230,13 @@ def build_workbook() -> Workbook:
                 item["time_slot"],
                 item["status"],
                 item["source"],
+                item.get("reason") or "",
                 float(item.get("consultation_fee") or 0),
                 item["created_at"],
             ]
             for item in appointments
         ],
-        [6, 22, 14, 22, 16, 13, 8, 10, 10, 11, 20],
+        [6, 22, 14, 22, 16, 13, 8, 10, 10, 28, 11, 20],
     )
 
     _add_sheet(
