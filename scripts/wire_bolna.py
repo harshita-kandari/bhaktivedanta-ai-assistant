@@ -62,6 +62,9 @@ Only state facts that came back from a tool. Never invent doctor names, fees, sl
 1. Ask which department and the reason for the visit (ENT, Orthopedics or Cardiology).
 2. Offer a doctor from list_doctors, or use the doctor the caller names.
 3. Ask for the date. Call check_availability and offer one or two specific free slots.
+   If the caller already named a doctor, call check_availability directly instead of
+   listing every doctor first. Never call the same tool twice for the same details;
+   the availability result already includes the fee.
 4. Collect the patient's full name, age, gender and phone number, one question at a time
    (read the phone number back digit by digit).
 5. Call get_doctor_fee if the caller asks about cost, otherwise quote the fee returned by the tool.

@@ -119,6 +119,13 @@ internet. Re-running the script is enough after a tunnel URL changes.
 
 ## Phone calls (Bolna)
 
+Start the tunnel in the Asia-Pacific region; the default US edge added ~0.8 s to
+every tool call:
+
+```bash
+ngrok http 8000 --region ap
+```
+
 The page has a **Prefer a phone call?** card: enter a number, confirm, and Bolna
 rings it. The agent can check slots, quote fees and book during the call.
 
