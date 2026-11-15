@@ -75,6 +75,38 @@ DOCTOR_KEYS = {"doctor", "doctor_name", "preferred_doctor", "specialist"}
 REASON_KEYS = {"reason", "requirement", "symptoms", "purpose", "concern", "issue"}
 DATE_KEYS = {"appointment_date", "date", "preferred_date"}
 TIME_KEYS = {"time_slot", "time", "preferred_time"}
+LINK_WINDOW_SECONDS = 900
+
+
+def _parse_datetime(value):
+    try:
+        return datetime.fromisoformat(str(value))
+    except (ValueError, TypeError):
+        return None
+
+
+def _match_by_time(call, candidates, used):
+    """Fallback link: a call booking made within 15 minutes of the call.
+
+    The caller often gives a different phone number than the one dialled, so
+    matching on phone alone misses real bookings.
+    """
+    call_time = _parse_datetime(call.get("created_at"))
+    if call_time is None:
+        return {}
+    best, best_delta = None, None
+    for appointment in candidates:
+        if appointment["id"] in used:
+            continue
+        appointment_time = _parse_datetime(appointment.get("created_at"))
+        if appointment_time is None:
+            continue
+        delta = abs((appointment_time - call_time).total_seconds())
+        if delta <= LINK_WINDOW_SECONDS and (best_delta is None or delta < best_delta):
+            best, best_delta = appointment, delta
+    if best is not None:
+        used.add(best["id"])
+    return best or {}
 
 
 def _add_sheet(workbook, title, headers, rows, widths, wrap_columns=()):
@@ -151,9 +183,14 @@ def build_workbook() -> Workbook:
     for appointment in appointments:  # newest first
         by_phone.setdefault(appointment["phone"], appointment)
 
+    call_bookings = [item for item in appointments if item.get("source") == "call"]
+    used_bookings: set[int] = set()
+
     call_rows = []
     for call in calls:
-        appointment = by_phone.get(call["recipient_phone"]) or {}
+        appointment = by_phone.get(call["recipient_phone"]) or _match_by_time(
+            call, call_bookings, used_bookings
+        )
         extracted = _as_json(call.get("extracted_data"))
         call_rows.append(
             [
