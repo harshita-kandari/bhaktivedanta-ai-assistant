@@ -155,3 +155,14 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts\e2e_test.ps1
 
 - `docs/ARCHITECTURE.md` — system design, schema, layers, build phases
 - `docs/DEEPSEEK_PLAN.md` — AI integration plan (function calling vs intent JSON)
+
+### Create a fresh agent dated today
+
+Clones the current agent (voice stack, tools, webhook, prompt) into a new one:
+
+```bash
+.venv/bin/python scripts/create_bolna_agent.py "Bhakti Hospital Assistant"
+```
+
+It prints the new `BOLNA_AGENT_ID`; put it in `.env` and restart. Creating an
+agent does not use call credits.
