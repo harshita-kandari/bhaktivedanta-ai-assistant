@@ -20,3 +20,12 @@ def test_export_returns_workbook(client: TestClient) -> None:
     assert {"Patient", "Doctor", "Requirement", "Appointment date", "Time"} <= set(
         call_headers
     )
+
+
+def test_csv_export(client: TestClient) -> None:
+    response = client.get("/api/v1/export/calls.csv")
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/csv")
+    header = response.text.splitlines()[0]
+    assert header.startswith("Call time,Status,Phone")
+    assert "Patient" in header and "Requirement" in header

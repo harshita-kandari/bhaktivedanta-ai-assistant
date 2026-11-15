@@ -169,6 +169,18 @@ The Bolna agent is multilingual: **English default, Hindi on request**.
 
 Re-apply the language setup with `scripts/enable_hindi.py`.
 
+## Google Sheets
+
+A public CSV is available at `GET /api/v1/export/calls.csv` (call time, status,
+phone, duration, cost, patient, doctor, requirement, appointment date/time,
+emergency, transcript).
+
+Google Sheets cannot use `IMPORTDATA` here because ngrok serves a browser
+warning to browser-like requests. Use the Apps Script in
+`scripts/google_sheet.gs`, which sends the bypass header and rewrites a "Calls"
+sheet. Add a time-driven trigger (every minute) so new calls appear
+automatically.
+
 ## Tests
 
 ```bash

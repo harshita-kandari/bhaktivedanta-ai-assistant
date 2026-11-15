@@ -347,6 +347,86 @@ def workbook_bytes() -> bytes:
     return buffer.getvalue()
 
 
+def call_records() -> list[dict]:
+    """Flat call rows for CSV/Sheets, linked to their booking."""
+    with db_session() as conn:
+        calls = [dict(row) for row in conn.execute("SELECT * FROM call_logs ORDER BY id DESC")]
+        appointments = [
+            dict(row)
+            for row in conn.execute(
+                """
+                SELECT a.id, d.name AS doctor, p.full_name AS patient, p.phone,
+                       a.appointment_date, a.time_slot, a.reason, a.source, a.created_at
+                FROM appointments a
+                JOIN doctors d ON d.id = a.doctor_id
+                JOIN patients p ON p.id = a.patient_id
+                ORDER BY a.id DESC
+                """
+            )
+        ]
+
+    by_phone = {}
+    for appointment in appointments:
+        if appointment.get("source") == "call":
+            by_phone.setdefault(appointment["phone"], appointment)
+
+    call_bookings = [item for item in appointments if item.get("source") == "call"]
+    used: set[int] = set()
+    records = []
+    for call in calls:
+        appointment = {}
+        if call["status"] == "completed":
+            appointment = _match_by_time(call, call_bookings, used)
+            if not appointment:
+                candidate = by_phone.get(call["recipient_phone"])
+                if candidate and candidate["id"] not in used:
+                    used.add(candidate["id"])
+                    appointment = candidate
+        records.append(
+            {
+                "call_time": call["created_at"],
+                "status": call["status"],
+                "phone": call["recipient_phone"],
+                "duration_s": int(float(call.get("conversation_duration") or 0)),
+                "cost_inr": float(call.get("total_cost") or 0),
+                "patient": appointment.get("patient") or "",
+                "doctor": appointment.get("doctor") or "",
+                "requirement": appointment.get("reason") or "",
+                "appointment_date": appointment.get("appointment_date") or "",
+                "appointment_time": appointment.get("time_slot") or "",
+                "emergency": "YES" if call.get("emergency_flag") else "",
+                "transcript": (call.get("transcript") or "").replace("\r", " ").replace("\n", " | "),
+            }
+        )
+    return records
+
+
+def calls_csv() -> str:
+    import csv
+    from io import StringIO
+
+    columns = [
+        ("call_time", "Call time"),
+        ("status", "Status"),
+        ("phone", "Phone"),
+        ("duration_s", "Duration (s)"),
+        ("cost_inr", "Cost (INR)"),
+        ("patient", "Patient"),
+        ("doctor", "Doctor"),
+        ("requirement", "Requirement"),
+        ("appointment_date", "Appointment date"),
+        ("appointment_time", "Appointment time"),
+        ("emergency", "Emergency"),
+        ("transcript", "Transcript"),
+    ]
+    buffer = StringIO()
+    writer = csv.writer(buffer)
+    writer.writerow([label for _, label in columns])
+    for record in call_records():
+        writer.writerow([record[key] for key, _ in columns])
+    return buffer.getvalue()
+
+
 def write_latest_files() -> list[Path]:
     """Rewrite the on-disk workbook, so it reflects the newest call.
 
