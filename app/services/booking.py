@@ -2,6 +2,7 @@ from datetime import date
 from typing import Optional
 
 from app.core.logging import get_logger
+from app.core.timeutil import to_local
 from app.db.database import db_session
 from app.repositories import appointments as appointments_repo
 from app.repositories import doctors as doctors_repo
@@ -177,4 +178,5 @@ def get_appointments(
             appointment["consultation_fee"] = doctor["consultation_fee"] if doctor else None
             appointment["patient_name"] = patient["full_name"] if patient else None
             appointment["patient_phone"] = patient["phone"] if patient else None
+            appointment["created_at"] = to_local(appointment.get("created_at"))
         return appointments

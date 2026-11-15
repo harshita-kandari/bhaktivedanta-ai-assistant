@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Query
 
 from app.api.schemas import CallPlaceRequest
+from app.core.timeutil import to_local
 from app.db.database import db_session
 from app.integrations.bolna import BolnaClient, BolnaError
 from app.repositories import call_logs as call_logs_repo
@@ -23,7 +24,10 @@ def list_calls(limit: int = Query(default=20, ge=1, le=200)) -> list[dict]:
             """,
             (limit,),
         ).fetchall()
-    return [dict(row) for row in rows]
+    records = [dict(row) for row in rows]
+    for record in records:
+        record["created_at"] = to_local(record.get("created_at"))
+    return records
 
 
 @router.post("", status_code=202)

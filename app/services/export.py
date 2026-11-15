@@ -16,6 +16,7 @@ from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 
 from app.core.config import settings
+from app.core.timeutil import to_local
 from app.db.database import db_session
 
 EXCEL_CELL_LIMIT = 32_000
@@ -216,7 +217,7 @@ def build_workbook() -> Workbook:
                 float(call.get("conversation_duration") or 0),
                 float(call.get("total_cost") or 0),
                 "YES" if call.get("emergency_flag") else "",
-                call["created_at"],
+                to_local(call["created_at"]),
                 _clip(call.get("transcript")),
                 _clip(call.get("extracted_data")),
             ]
@@ -278,7 +279,7 @@ def build_workbook() -> Workbook:
                 item["source"],
                 item.get("reason") or "",
                 float(item.get("consultation_fee") or 0),
-                item["created_at"],
+                to_local(item["created_at"]),
             ]
             for item in appointments
         ],
@@ -331,7 +332,7 @@ def build_workbook() -> Workbook:
                 patient["phone"],
                 patient["age"],
                 patient["gender"],
-                patient["created_at"],
+                to_local(patient["created_at"]),
             ]
             for patient in patients
         ],
@@ -384,7 +385,7 @@ def call_records() -> list[dict]:
                     appointment = candidate
         records.append(
             {
-                "call_time": call["created_at"],
+                "call_time": to_local(call["created_at"]),
                 "status": call["status"],
                 "phone": call["recipient_phone"],
                 "duration_s": int(float(call.get("conversation_duration") or 0)),
@@ -474,7 +475,7 @@ def sheets_payload() -> dict:
             ],
             "rows": [
                 [
-                    item["created_at"],
+                    to_local(item["created_at"]),
                     item["patient"],
                     item["phone"],
                     item["doctor"],
@@ -526,7 +527,7 @@ def sheets_payload() -> dict:
                     patient["phone"],
                     patient["age"] if patient["age"] is not None else "",
                     patient["gender"] or "",
-                    patient["created_at"],
+                    to_local(patient["created_at"]),
                 ]
                 for patient in patients
             ],
