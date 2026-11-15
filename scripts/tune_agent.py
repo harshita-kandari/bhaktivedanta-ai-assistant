@@ -67,8 +67,15 @@ def main() -> int:
 
             task_config["number_of_words_for_interruption"] = 3
             task_config["interruption_backoff_period"] = 800
-            task_config["hangup_after_silence"] = 12
+            task_config["hangup_after_silence"] = 25
             task_config["call_terminate"] = 240
+            task_config["check_if_user_online"] = True
+            task_config["trigger_user_online_message_after"] = 6
+            task_config["max_silence_repeats"] = 3
+            task_config["check_user_online_message"] = {
+                "en": "Sorry, I didn't catch that. Could you please repeat it?",
+                "hi": "क्षमा करें, मैं सुन नहीं पायी। कृपया दोबारा कहिए।",
+            }
 
             tasks.append(
                 {
