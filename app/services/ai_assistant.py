@@ -58,6 +58,15 @@ def _format_fee(result: dict) -> str:
 
 
 class ToolExecutor:
+    def __init__(self) -> None:
+        self._last_patient_id: Optional[int] = None
+        self._last_booking_id: Optional[int] = None
+
+    def reset(self) -> None:
+        """Clear per-message state so a reply never reports a previous booking."""
+        self._last_patient_id = None
+        self._last_booking_id = None
+
     def execute(self, name: str, arguments: dict[str, Any]) -> dict[str, Any]:
         logger.info("tool called", extra={"tool": name, "arguments": arguments})
         if name == "list_doctors":
@@ -174,7 +183,13 @@ class AIAssistantService:
             self._client = DeepSeekClient()
         return self._client
 
-    def process_message(self, message: str, context: CallContext) -> AssistantResponse:
+    def process_message(
+        self,
+        message: str,
+        context: CallContext,
+        history: Optional[list[dict]] = None,
+    ) -> AssistantResponse:
+        self.executor.reset()
         pre_emergency = emergency.check_emergency(message)
         if pre_emergency:
             return self._emergency_response(pre_emergency)
@@ -201,7 +216,20 @@ class AIAssistantService:
                         ),
                     }
                 )
-        messages.append({"role": "user", "content": message})
+        # Prior chat turns from the browser, so "she" and "yes" still refer to
+        # the doctor and slot discussed a moment ago.
+        for turn in (history or [])[-12:]:
+            role = turn.get("role")
+            content = turn.get("content")
+            if role in ("user", "assistant") and isinstance(content, str) and content.strip():
+                messages.append({"role": role, "content": content})
+
+        messages.append(
+            {
+                "role": "user",
+                "content": message,
+            }
+        )
 
         tool_rounds = 0
         patient_id: Optional[int] = context.patient_id

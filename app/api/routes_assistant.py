@@ -17,4 +17,4 @@ def chat(payload: AssistantMessage) -> dict:
         patient_id=payload.patient_id,
         phone=payload.phone,
     )
-    return asdict(assistant_service.process_message(payload.message, context))
+    return asdict(assistant_service.process_message(payload.message, context, payload.history))

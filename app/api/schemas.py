@@ -76,3 +76,4 @@ class AssistantMessage(BaseModel):
     patient_id: Optional[int] = None
     phone: Optional[str] = None
     origin: Literal["call", "chat"] = "chat"
+    history: list[dict] = []

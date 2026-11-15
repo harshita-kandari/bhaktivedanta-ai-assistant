@@ -27,8 +27,22 @@ copy .env.example .env            # then fill in real keys
 ```
 
 - API docs: http://127.0.0.1:8000/docs
+- Web app: http://127.0.0.1:8000/ — booking form, chat and microphone
 - Health check: http://127.0.0.1:8000/health
 - Doctors are auto-seeded on first run (8 sample doctors).
+
+## Web app
+
+The page at `/` uses the same API:
+
+- **Form:** pick a doctor and date, see real free slots, book with name and phone.
+  Returning phone numbers are reused, not duplicated.
+- **Chat:** plain English. The browser sends recent turns as `history`, so
+  follow-ups like "is she free?" keep their context.
+- **Voice:** the 🎤 button uses the browser's speech recognition; replies are
+  spoken with speech synthesis. Chrome and Safari support it; Firefox does not.
+- **Confirmations:** the card shows the appointment id, doctor, date, time and
+  fee, and the booked slot disappears from the list.
 
 ## Environment (.env)
 

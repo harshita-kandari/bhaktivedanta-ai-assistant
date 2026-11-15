@@ -159,5 +159,6 @@ def get_appointments(
             patient = patients_repo.get_patient_by_id(conn, appointment["patient_id"])
             appointment["doctor_name"] = doctor["name"] if doctor else None
             appointment["doctor_department"] = doctor["department"] if doctor else None
+            appointment["consultation_fee"] = doctor["consultation_fee"] if doctor else None
             appointment["patient_name"] = patient["full_name"] if patient else None
         return appointments

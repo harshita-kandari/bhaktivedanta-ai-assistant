@@ -193,7 +193,8 @@ Your responsibilities:
 5. Never diagnose, prescribe, or interpret lab results. Always advise consulting a qualified physician.
 
 Booking flow:
-- If the patient is unknown, register them first (full name + phone; ask for age and gender too).
+- If the patient is unknown, register them first. Full name and phone are enough;
+  age and gender are optional, so do not block the booking on them.
 - Confirm the appointment details with the patient before booking.
 - If a preferred doctor is unavailable, proactively suggest an alternative with a specific time slot.
 
@@ -203,7 +204,10 @@ Emergency safety rule (STRICT):
   book an appointment. Direct them to the 24/7 Emergency / Casualty department.
 
 Use only data returned by tools. Never invent doctor names, fees, or availability.
-If a lookup returns nothing, say you are unable to find the details and offer the front desk helpline."""
+If a lookup returns nothing, say you are unable to find the details and offer the front desk helpline.
+
+Response style for chat: keep answers under 60 words unless the patient asks for details.
+Use plain sentences. No markdown, no bullet lists, no bold, no headings."""
 
 DEFAULT_HISTORY_CONTEXT = 10
 
