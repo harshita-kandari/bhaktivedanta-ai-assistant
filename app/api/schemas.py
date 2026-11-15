@@ -51,6 +51,7 @@ class CallPlaceRequest(BaseModel):
     recipient_phone_number: str
     user_data: dict = {}
     retry_config: dict = {}
+    language: Optional[Literal["en", "hi"]] = None
 
 
 class VoiceBookRequest(BaseModel):

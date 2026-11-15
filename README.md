@@ -150,6 +150,20 @@ Sheets: **Summary**, **Calls**, **Appointments**, **Doctors**, **Patients**.
 The file is generated on demand; SQLite remains the live source of truth.
 Queued or ringing calls have no transcript yet, so those cells are blank.
 
+## Hindi calls
+
+The Bolna agent is multilingual: **English default, Hindi on request**.
+
+- Page: choose **हिंदी (Hindi)** under *Call language*, then call.
+- API: `POST /api/v1/calls` with `{"recipient_phone_number": "...", "language": "hi"}`
+  (sent to Bolna as `agent_data.language`).
+- Hindi uses Sarvam `saaras:v4` for speech-to-text and Sarvam `bulbul:v3`
+  (voice: Suhani) for speech, with its own Hindi prompt.
+- Mid-call switching is enabled, so a caller who starts in English and speaks
+  Hindi is switched automatically.
+
+Re-apply the language setup with `scripts/enable_hindi.py`.
+
 ## Tests
 
 ```bash

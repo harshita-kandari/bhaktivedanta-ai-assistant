@@ -16,6 +16,7 @@ def place_call(payload: CallPlaceRequest) -> dict:
             recipient_phone_number=payload.recipient_phone_number,
             user_data=payload.user_data,
             retry_config=payload.retry_config,
+            language=payload.language,
         )
     except BolnaError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc

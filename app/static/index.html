@@ -201,6 +201,15 @@
       </p>
       <label for="call-phone">Your phone number</label>
       <input id="call-phone" placeholder="+919876543210" autocomplete="tel" />
+      <div class="row">
+        <div>
+          <label for="call-language">Call language</label>
+          <select id="call-language">
+            <option value="en">English</option>
+            <option value="hi">हिंदी (Hindi)</option>
+          </select>
+        </div>
+      </div>
       <div style="margin-top:14px">
         <button class="btn-quiet" id="call-me">☎ Call my phone</button>
       </div>
@@ -562,7 +571,10 @@
         const response = await fetch(`${API}/calls`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ recipient_phone_number: phone }),
+          body: JSON.stringify({
+            recipient_phone_number: phone,
+            language: $("call-language").value,
+          }),
         });
         const body = await response.json();
         if (!response.ok) {

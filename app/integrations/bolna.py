@@ -28,6 +28,7 @@ class BolnaClient:
         user_data: dict | None = None,
         retry_config: dict | None = None,
         from_phone_number: str | None = None,
+        language: str | None = None,
     ) -> dict:
         body = {
             "agent_id": settings.bolna_agent_id,
@@ -39,6 +40,8 @@ class BolnaClient:
             body["retry_config"] = retry_config
         if from_phone_number:
             body["from_phone_number"] = from_phone_number
+        if language:
+            body["agent_data"] = {"language": language}
         try:
             response = httpx.post(f"{self.base_url}/call", json=body, headers=self.headers, timeout=30)
         except httpx.HTTPError as exc:
