@@ -41,6 +41,26 @@ class TestVoiceBookingApi:
         assert patient.status_code == 200
         assert patient.json()["full_name"] == "Voice Caller"
 
+    def test_stores_age_and_gender_for_new_patient(self, client: TestClient) -> None:
+        doctor_name, date, slot = _first_free_slot(client)
+        response = client.post(
+            "/api/v1/voice/book",
+            json={
+                "full_name": "Age Gender Caller",
+                "phone": "+919800000005",
+                "doctor_name": doctor_name,
+                "appointment_date": date,
+                "time_slot": slot,
+                "age": 41,
+                "gender": "female",
+            },
+        )
+        assert response.status_code == 201, response.text
+        patient = client.get("/api/v1/patients/by-phone/+919800000005")
+        assert patient.status_code == 200
+        assert patient.json()["age"] == 41
+        assert patient.json()["gender"] == "female"
+
     def test_partial_doctor_name_resolves(self, client: TestClient) -> None:
         doctor_name, date, slot = _first_free_slot(client)
         surname = doctor_name.split()[-1]

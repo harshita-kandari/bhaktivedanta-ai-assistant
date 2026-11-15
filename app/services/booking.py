@@ -90,6 +90,21 @@ def book_for_caller(
     patient = patients_service.get_patient_by_phone(phone)
     if not patient:
         patient = patients_service.register_patient(full_name, phone, age, gender)
+    elif (age is not None and patient.get("age") is None) or (
+        gender and not patient.get("gender")
+    ):
+        # Fill in details a previous call left blank.
+        with db_session() as conn:
+            conn.execute(
+                "UPDATE patients SET age = COALESCE(age, ?), gender = COALESCE(gender, ?) "
+                "WHERE id = ?",
+                (age, gender, patient["id"]),
+            )
+        patient = {
+            **patient,
+            "age": patient.get("age") or age,
+            "gender": patient.get("gender") or gender,
+        }
 
     with db_session() as conn:
         doctor = doctors_repo.get_doctor_by_name(conn, doctor_name.strip())

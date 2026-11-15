@@ -61,8 +61,8 @@ Only state facts that came back from a tool. Never invent doctor names, fees, sl
 1. Ask which department and the reason for the visit (ENT, Orthopedics or Cardiology).
 2. Offer a doctor from list_doctors, or use the doctor the caller names.
 3. Ask for the date. Call check_availability and offer one or two specific free slots.
-4. Collect the patient's full name and phone number (read the number back digit by digit).
-   Age and gender are optional.
+4. Collect the patient's full name, age, gender and phone number, one question at a time
+   (read the phone number back digit by digit).
 5. Call get_doctor_fee if the caller asks about cost, otherwise quote the fee returned by the tool.
 6. Read back doctor, date, time and fee, and get an explicit "yes".
 7. Call book_appointment. Only after it succeeds, confirm the appointment id, doctor, date and time.
@@ -143,15 +143,32 @@ def build_api_tools(public_base_url: str) -> dict[str, Any]:
         _function(
             "custom_task_book_appointment",
             "Create an appointment for the caller. Only call after the caller has confirmed the "
-            "doctor, date and time. Requires the patient's full name and phone number.",
+            "doctor, date and time. Requires the patient's full name, age, gender and phone number.",
             {
                 "full_name": _text("Patient's full name"),
+                "age": {
+                    "type": "integer",
+                    "description": "Patient's age in years",
+                },
+                "gender": {
+                    "type": "string",
+                    "enum": ["male", "female", "other"],
+                    "description": "Patient's gender",
+                },
                 "phone": _text("Patient's phone number with country code if possible"),
                 "doctor_name": _text("Doctor's name"),
                 "appointment_date": _text("Date in YYYY-MM-DD format"),
                 "time_slot": _text("Time in 24-hour HH:MM format, for example 10:30"),
             },
-            ["full_name", "phone", "doctor_name", "appointment_date", "time_slot"],
+            [
+                "full_name",
+                "age",
+                "gender",
+                "phone",
+                "doctor_name",
+                "appointment_date",
+                "time_slot",
+            ],
         ),
         _function(
             "custom_task_emergency_check",
@@ -192,6 +209,8 @@ def build_api_tools(public_base_url: str) -> dict[str, Any]:
             "url": f"{api}/voice/book",
             "param": {
                 "full_name": "%(full_name)s",
+                "age": "%(age)s",
+                "gender": "%(gender)s",
                 "phone": "%(phone)s",
                 "doctor_name": "%(doctor_name)s",
                 "appointment_date": "%(appointment_date)s",
