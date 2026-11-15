@@ -117,6 +117,27 @@ internet. Re-running the script is enough after a tunnel URL changes.
 - Voice agent LLM/TTS/STT stay on Bolna's managed stack (Azure GPT-4.1 mini,
   ElevenLabs, Deepgram); the tools above are what connect it to hospital data.
 
+## Phone calls (Bolna)
+
+The page has a **Prefer a phone call?** card: enter a number, confirm, and Bolna
+rings it. The agent can check slots, quote fees and book during the call.
+
+Same thing over the API:
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/v1/calls \
+  -H 'Content-Type: application/json' \
+  -d '{"recipient_phone_number":"+919876543210"}'
+```
+
+- The post-call webhook stores transcript, extracted data and cost in `call_logs`.
+- Webhook source IPs are allowlisted; behind a tunnel the real IP is read from
+  `X-Forwarded-For`.
+- Bolna blocks private tool URLs, so the server must stay reachable through the
+  tunnel. Re-run `scripts/wire_bolna.py --public-base-url <url>` if it changes.
+- Outbound calls use the account's telephony caller ID; inbound calling needs a
+  Bolna number assigned to the agent.
+
 ## Tests
 
 ```bash

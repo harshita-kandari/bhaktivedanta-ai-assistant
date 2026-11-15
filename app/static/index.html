@@ -193,6 +193,20 @@
       <div id="confirm-body" class="empty">Nothing booked yet.</div>
     </section>
 
+    <section class="card">
+      <h2>Prefer a phone call?</h2>
+      <p class="hint">
+        Bhakti can ring your phone and talk you through the booking.
+        This places a real call and uses Bolna credits.
+      </p>
+      <label for="call-phone">Your phone number</label>
+      <input id="call-phone" placeholder="+919876543210" autocomplete="tel" />
+      <div style="margin-top:14px">
+        <button class="btn-quiet" id="call-me">☎ Call my phone</button>
+      </div>
+      <div class="message" id="call-message"></div>
+    </section>
+
     <section class="card chat-card">
       <h2>Or just ask Bhakti</h2>
       <p class="hint">
@@ -528,6 +542,40 @@
 
     $("check").onclick = checkSlots;
     $("book").onclick = book;
+
+    $("call-me").onclick = async () => {
+      const phone = $("call-phone").value.trim();
+      if (!phone) {
+        setMessage($("call-message"), "Enter your number with country code, for example +919876543210.", "error");
+        return;
+      }
+      const confirmed = window.confirm(
+        `Place a real call to ${phone}?\n\nThis rings your phone and uses Bolna credits.`
+      );
+      if (!confirmed) return;
+
+      setMessage($("call-message"), "Placing the call…", "info");
+      try {
+        const response = await fetch(`${API}/calls`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ recipient_phone_number: phone }),
+        });
+        const body = await response.json();
+        if (!response.ok) {
+          setMessage($("call-message"), body.detail || "Could not place the call.", "error");
+          return;
+        }
+        setMessage(
+          $("call-message"),
+          `Calling ${phone}. Execution ${body.execution_id || "(pending)"} — status ${body.status || "queued"}. Your phone should ring shortly.`,
+          "info"
+        );
+      } catch (error) {
+        setMessage($("call-message"), "Could not reach the server.", "error");
+      }
+    };
+
     loadDoctors();
   </script>
 </body>
