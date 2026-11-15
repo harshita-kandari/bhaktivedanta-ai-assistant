@@ -5,7 +5,7 @@ from app.core.logging import get_logger
 from app.db.database import db_session
 from app.integrations.bolna import parse_webhook_payload
 from app.repositories import call_logs as call_logs_repo
-from app.services import emergency
+from app.services import emergency, export
 
 logger = get_logger(__name__)
 
@@ -53,6 +53,13 @@ async def bolna_webhook(request: Request) -> dict:
     with db_session() as conn:
         call_log_id = call_logs_repo.upsert_call_log(conn, {**data, "emergency_flag": emergency_flag})
         log = call_logs_repo.get_by_execution_id(conn, execution_id)
+
+    # Refresh the Excel report as soon as the call data lands.
+    try:
+        written = export.write_latest_files()
+        logger.info("export refreshed", extra={"files": [str(path) for path in written]})
+    except Exception as exc:  # noqa: BLE001 - reporting must never fail the webhook
+        logger.warning("export refresh failed", extra={"error": str(exc)})
 
     if data["status"] in TERMINAL_STATUSES:
         logger.info(

@@ -9,6 +9,7 @@ Excel is a report, not the live store: SQLite remains the source of truth.
 import json
 from datetime import datetime
 from io import BytesIO
+from pathlib import Path
 
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill
@@ -336,6 +337,28 @@ def workbook_bytes() -> bytes:
     buffer = BytesIO()
     build_workbook().save(buffer)
     return buffer.getvalue()
+
+
+def write_latest_files() -> list[Path]:
+    """Rewrite the on-disk workbook, so it reflects the newest call.
+
+    Excel cannot watch a database; the file is refreshed after each webhook and
+    the user reopens it. Failures are ignored so a report never breaks a call.
+    """
+    content = workbook_bytes()
+    targets = [settings.database_file.parent / "hospital_call_data_latest.xlsx"]
+    desktop = Path.home() / "Desktop"
+    if desktop.is_dir():
+        targets.append(desktop / "hospital_call_data.xlsx")
+
+    written: list[Path] = []
+    for target in targets:
+        try:
+            target.write_bytes(content)
+            written.append(target)
+        except OSError:
+            continue
+    return written
 
 
 def database_path():
