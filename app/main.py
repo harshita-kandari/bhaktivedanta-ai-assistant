@@ -55,6 +55,12 @@ def dashboard() -> FileResponse:
     """Auto-refreshing view of calls and appointments."""
     return FileResponse(Path(__file__).resolve().parent / "static" / "dashboard.html")
 
+
+@app.get("/sheet", include_in_schema=False)
+def live_sheet() -> FileResponse:
+    """Spreadsheet-style view of all datasets, refreshed every 2 seconds."""
+    return FileResponse(Path(__file__).resolve().parent / "static" / "sheet.html")
+
 @app.get("/health", tags=["system"])
 def health() -> dict:
     return {"status": "ok", "app": settings.app_name, "version": settings.app_version}

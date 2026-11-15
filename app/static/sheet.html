@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Bhakti — Live sheet</title>
+  <link rel="icon" href="data:," />
+  <style>
+    :root {
+      --ink: #12212e;
+      --muted: #5b6b7a;
+      --line: #dfe6ec;
+      --accent: #0f766e;
+      --accent-soft: #e6f4f1;
+      --grid: #edf1f5;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f7f9fb;
+      color: var(--ink);
+    }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 18px;
+      background: #fff;
+      border-bottom: 1px solid var(--line);
+    }
+    .title { display: flex; align-items: baseline; gap: 10px; }
+    .title h1 { margin: 0; font-size: 17px; }
+    .title span { color: var(--muted); font-size: 12px; }
+    .tools { display: flex; align-items: center; gap: 14px; font-size: 12px; color: var(--muted); }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); display: inline-block; margin-right: 6px; animation: pulse 1.6s infinite; }
+    @keyframes pulse { 50% { opacity: .35; } }
+    .tools a { color: var(--accent); text-decoration: none; }
+    main { flex: 1; min-height: 0; padding: 14px 18px 0; display: flex; flex-direction: column; }
+    .grid-wrap {
+      flex: 1;
+      min-height: 0;
+      overflow: auto;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 10px 10px 0 0;
+    }
+    table { border-collapse: separate; border-spacing: 0; font-size: 12.5px; min-width: 100%; }
+    th, td {
+      border-right: 1px solid var(--grid);
+      border-bottom: 1px solid var(--grid);
+      padding: 6px 9px;
+      text-align: left;
+      white-space: nowrap;
+      vertical-align: top;
+    }
+    thead th {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      background: #f1f5f9;
+      color: var(--muted);
+      font-weight: 600;
+    }
+    thead tr.letters th {
+      top: 0;
+      background: #f7f9fb;
+      font-weight: 500;
+      font-size: 10.5px;
+      text-align: center;
+      padding: 3px 0;
+    }
+    thead tr.labels th { top: 21px; }
+    tbody td.rownum {
+      position: sticky;
+      left: 0;
+      z-index: 1;
+      background: #f7f9fb;
+      color: var(--muted);
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+      width: 46px;
+      min-width: 46px;
+    }
+    thead th.corner { position: sticky; left: 0; z-index: 3; background: #eef2f6; width: 46px; min-width: 46px; }
+    tbody tr:hover td { background: #f8fbfa; }
+    tbody tr:hover td.rownum { background: #eef2f6; }
+    td.wrap { white-space: normal; min-width: 320px; max-width: 520px; }
+    .tabs {
+      display: flex;
+      gap: 2px;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-top: none;
+      border-radius: 0 0 10px 10px;
+      padding: 6px 8px;
+      overflow-x: auto;
+    }
+    .tab {
+      border: none;
+      background: transparent;
+      padding: 7px 14px;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: .02em;
+      color: var(--muted);
+      border-radius: 6px 6px 0 0;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .tab:hover { background: #f1f5f9; }
+    .tab.active { background: var(--accent-soft); color: var(--accent); }
+    .status { margin-left: auto; padding: 7px 10px; font-size: 11px; color: var(--muted); }
+    .empty { padding: 26px; color: var(--muted); font-size: 13px; }
+    td.pill { font-weight: 600; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="title">
+      <h1>Bhakti — live sheet</h1>
+      <span>auto-refreshes every 2 seconds</span>
+    </div>
+    <div class="tools">
+      <span><span class="dot"></span><span id="updated">connecting…</span></span>
+      <a href="/dashboard">dashboard</a>
+      <a href="/">booking page</a>
+    </div>
+  </header>
+
+  <main>
+    <div class="grid-wrap">
+      <table>
+        <thead>
+          <tr class="letters" id="letters"></tr>
+          <tr class="labels" id="labels"></tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+      <div class="empty" id="empty" hidden>No rows yet.</div>
+    </div>
+    <div class="tabs" id="tabs"></div>
+  </main>
+
+  <script>
+    const API = "/api/v1/export/sheets.json";
+    const TABS = [
+      { key: "calls", label: "CALLS" },
+      { key: "appointments", label: "APPOINTMENTS" },
+      { key: "doctors", label: "DOCTORS" },
+      { key: "patients", label: "PATIENTS" },
+    ];
+    let active = "calls";
+    let latest = null;
+
+    const $ = (id) => document.getElementById(id);
+
+    function columnLetter(index) {
+      let n = index;
+      let label = "";
+      while (n >= 0) {
+        label = String.fromCharCode(65 + (n % 26)) + label;
+        n = Math.floor(n / 26) - 1;
+      }
+      return label;
+    }
+
+    function buildTabs() {
+      const bar = $("tabs");
+      bar.innerHTML = "";
+      for (const tab of TABS) {
+        const button = document.createElement("button");
+        button.className = "tab" + (tab.key === active ? " active" : "");
+        button.textContent = tab.label;
+        button.onclick = () => {
+          active = tab.key;
+          buildTabs();
+          render();
+        };
+        bar.appendChild(button);
+      }
+      const status = document.createElement("span");
+      status.className = "status";
+      status.id = "rowcount";
+      bar.appendChild(status);
+    }
+
+    function render() {
+      if (!latest) return;
+      const table = latest[active];
+      if (!table) return;
+
+      const letters = $("letters");
+      const labels = $("labels");
+      letters.innerHTML = "";
+      labels.innerHTML = "";
+
+      const corner = document.createElement("th");
+      corner.className = "corner";
+      letters.appendChild(corner);
+      const corner2 = document.createElement("th");
+      corner2.className = "corner";
+      labels.appendChild(corner2);
+
+      table.headers.forEach((header, index) => {
+        const letter = document.createElement("th");
+        letter.textContent = columnLetter(index);
+        letters.appendChild(letter);
+
+        const label = document.createElement("th");
+        label.textContent = header;
+        labels.appendChild(label);
+      });
+
+      const body = $("rows");
+      body.innerHTML = "";
+      const wrapIndex = table.headers.findIndex((h) => /transcript|requirement|reason/i.test(h));
+
+      table.rows.forEach((row, rowIndex) => {
+        const tr = document.createElement("tr");
+        const number = document.createElement("td");
+        number.className = "rownum";
+        number.textContent = rowIndex + 1;
+        tr.appendChild(number);
+
+        row.forEach((value, columnIndex) => {
+          const td = document.createElement("td");
+          td.textContent = value === null || value === undefined ? "" : String(value);
+          if (columnIndex === wrapIndex) td.className = "wrap";
+          tr.appendChild(td);
+        });
+        body.appendChild(tr);
+      });
+
+      $("empty").hidden = table.rows.length > 0;
+      const count = $("rowcount");
+      if (count) count.textContent = table.rows.length + " rows";
+    }
+
+    async function refresh() {
+      const wrap = document.querySelector(".grid-wrap");
+      const scrollTop = wrap.scrollTop;
+      const scrollLeft = wrap.scrollLeft;
+      try {
+        const response = await fetch(API, { cache: "no-store" });
+        latest = await response.json();
+        render();
+        wrap.scrollTop = scrollTop;
+        wrap.scrollLeft = scrollLeft;
+        $("updated").textContent = "updated " + new Date().toLocaleTimeString();
+      } catch (error) {
+        $("updated").textContent = "offline — retrying";
+      }
+    }
+
+    buildTabs();
+    refresh();
+    setInterval(refresh, 2000);
+  </script>
+</body>
+</html>
