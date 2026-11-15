@@ -32,6 +32,18 @@ EMERGENCY_KEYWORDS = [
 ]
 
 
+def caller_text(transcript: str) -> str:
+    """Only the caller's lines, so the agent's own words cannot trigger triage.
+
+    Bolna transcripts are formatted as ``role: text`` per line.
+    """
+    lines = []
+    for line in (transcript or "").splitlines():
+        if line.lower().startswith("user:"):
+            lines.append(line.split(":", 1)[1])
+    return " ".join(lines) if lines else (transcript or "")
+
+
 def check_emergency(message: str) -> Optional[str]:
     lowered = (message or "").lower()
     for keyword in EMERGENCY_KEYWORDS:

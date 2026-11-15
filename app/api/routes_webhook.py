@@ -46,7 +46,7 @@ async def bolna_webhook(request: Request) -> dict:
 
     emergency_flag = 0
     transcript = data.get("transcript") or ""
-    if emergency.check_emergency(transcript):
+    if emergency.check_emergency(emergency.caller_text(transcript)):
         emergency_flag = 1
         logger.info("emergency flagged in call transcript", extra={"execution_id": execution_id})
 

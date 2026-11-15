@@ -49,6 +49,12 @@ def ui() -> FileResponse:
     """The booking + chat page. Same API docs stay at /docs."""
     return FileResponse(Path(__file__).resolve().parent / "static" / "index.html")
 
+
+@app.get("/dashboard", include_in_schema=False)
+def dashboard() -> FileResponse:
+    """Auto-refreshing view of calls and appointments."""
+    return FileResponse(Path(__file__).resolve().parent / "static" / "dashboard.html")
+
 @app.get("/health", tags=["system"])
 def health() -> dict:
     return {"status": "ok", "app": settings.app_name, "version": settings.app_version}

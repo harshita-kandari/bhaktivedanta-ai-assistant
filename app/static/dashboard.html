@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Bhakti — Live dashboard</title>
+  <link rel="icon" href="data:," />
+  <style>
+    :root {
+      --ink: #12212e;
+      --muted: #5b6b7a;
+      --line: #dbe3ea;
+      --accent: #0f766e;
+      --danger: #b42318;
+      --warn: #b54708;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f4f7f9;
+      color: var(--ink);
+    }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 18px 26px;
+      background: #fff;
+      border-bottom: 1px solid var(--line);
+    }
+    header h1 { margin: 0; font-size: 19px; }
+    .live {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--accent);
+      animation: pulse 1.6s infinite;
+    }
+    @keyframes pulse { 50% { opacity: .35; } }
+    main {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 20px;
+      max-width: 1180px;
+      margin: 22px auto 60px;
+      padding: 0 20px;
+    }
+    .card {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 18px 20px;
+      overflow: hidden;
+    }
+    h2 { margin: 0 0 4px; font-size: 15px; }
+    .hint { margin: 0 0 14px; color: var(--muted); font-size: 12px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th {
+      text-align: left;
+      padding: 9px 10px;
+      color: var(--muted);
+      font-weight: 600;
+      border-bottom: 1px solid var(--line);
+      white-space: nowrap;
+    }
+    td {
+      padding: 9px 10px;
+      border-bottom: 1px solid #eef2f5;
+      vertical-align: top;
+    }
+    tbody tr:last-child td { border-bottom: none; }
+    .pill {
+      display: inline-block;
+      padding: 3px 9px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      background: #eef2f5;
+      color: var(--muted);
+    }
+    .pill.completed { background: #e6f4f1; color: var(--accent); }
+    .pill.failed, .pill.no-answer { background: #fef3f2; color: var(--danger); }
+    .pill.ringing, .pill.queued, .pill.in-progress { background: #fffaeb; color: var(--warn); }
+    .emergency { color: var(--danger); font-weight: 700; }
+    .muted { color: var(--muted); }
+    .empty { padding: 18px 10px; color: var(--muted); font-size: 13px; }
+    a.back { color: var(--accent); font-size: 13px; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>Bhakti — live dashboard</h1>
+      <p class="hint" style="margin:4px 0 0">Calls and appointments, refreshed every few seconds.</p>
+    </div>
+    <div class="live">
+      <span class="dot"></span>
+      <span id="updated">connecting…</span>
+      <a class="back" href="/">← booking page</a>
+    </div>
+  </header>
+
+  <main>
+    <section class="card">
+      <h2>Calls</h2>
+      <p class="hint">Newest first. A call appears here when Bolna posts its end-of-call webhook.</p>
+      <table>
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Status</th>
+            <th>Phone</th>
+            <th>Duration</th>
+            <th>Cost</th>
+            <th>Transcript</th>
+          </tr>
+        </thead>
+        <tbody id="calls-body">
+          <tr><td class="empty" colspan="6">Loading…</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card">
+      <h2>Appointments</h2>
+      <p class="hint">Bookings written by the web page, chat or a phone call.</p>
+      <table>
+        <thead>
+          <tr>
+            <th>Booked at</th>
+            <th>Patient</th>
+            <th>Phone</th>
+            <th>Doctor</th>
+            <th>Date</th>
+            <th>Time</th>
+            <th>Reason</th>
+            <th>Source</th>
+          </tr>
+        </thead>
+        <tbody id="appointments-body">
+          <tr><td class="empty" colspan="8">Loading…</td></tr>
+        </tbody>
+      </table>
+    </section>
+  </main>
+
+  <script>
+    const API = "/api/v1";
+
+    function cell(text) {
+      const td = document.createElement("td");
+      td.textContent = text ?? "";
+      return td;
+    }
+
+    function time(value) {
+      if (!value) return "";
+      return String(value).replace("T", " ").slice(0, 19);
+    }
+
+    function statusPill(status) {
+      const td = document.createElement("td");
+      const span = document.createElement("span");
+      span.className = "pill " + String(status || "").toLowerCase();
+      span.textContent = status || "—";
+      td.appendChild(span);
+      return td;
+    }
+
+    async function refresh() {
+      try {
+        const [callsResponse, appointmentsResponse] = await Promise.all([
+          fetch(`${API}/calls?limit=25`),
+          fetch(`${API}/appointments?limit=25`),
+        ]);
+        const calls = await callsResponse.json();
+        const appointments = await appointmentsResponse.json();
+
+        const callsBody = document.getElementById("calls-body");
+        callsBody.innerHTML = "";
+        if (!calls.length) {
+          callsBody.innerHTML = '<tr><td class="empty" colspan="6">No calls yet.</td></tr>';
+        }
+        for (const call of calls) {
+          const row = document.createElement("tr");
+          row.appendChild(cell(time(call.created_at)));
+          row.appendChild(statusPill(call.status));
+          row.appendChild(cell(call.recipient_phone));
+          row.appendChild(cell(call.conversation_duration ? `${Math.round(call.conversation_duration)}s` : "—"));
+          row.appendChild(cell(call.total_cost ? `₹${Number(call.total_cost).toFixed(2)}` : "—"));
+          const transcript = cell((call.transcript_preview || "—").slice(0, 110));
+          if (call.emergency_flag) {
+            const flag = document.createElement("span");
+            flag.className = "emergency";
+            flag.textContent = "EMERGENCY · ";
+            transcript.prepend(flag);
+          }
+          row.appendChild(transcript);
+          callsBody.appendChild(row);
+        }
+
+        const appointmentsBody = document.getElementById("appointments-body");
+        appointmentsBody.innerHTML = "";
+        if (!appointments.length) {
+          appointmentsBody.innerHTML = '<tr><td class="empty" colspan="8">No appointments yet.</td></tr>';
+        }
+        for (const item of appointments) {
+          const row = document.createElement("tr");
+          row.appendChild(cell(time(item.created_at)));
+          row.appendChild(cell(item.patient_name || "—"));
+          row.appendChild(cell(item.patient_phone || "—"));
+          row.appendChild(cell(item.doctor_name || "—"));
+          row.appendChild(cell(item.appointment_date));
+          row.appendChild(cell(item.time_slot));
+          row.appendChild(cell(item.reason || "—"));
+          row.appendChild(cell(item.source));
+          appointmentsBody.appendChild(row);
+        }
+
+        document.getElementById("updated").textContent =
+          "updated " + new Date().toLocaleTimeString();
+      } catch (error) {
+        document.getElementById("updated").textContent = "offline — retrying";
+      }
+    }
+
+    refresh();
+    setInterval(refresh, 4000);
+  </script>
+</body>
+</html>

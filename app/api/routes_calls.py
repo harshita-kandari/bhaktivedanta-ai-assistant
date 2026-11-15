@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 
 from app.api.schemas import CallPlaceRequest
 from app.db.database import db_session
@@ -6,6 +6,24 @@ from app.integrations.bolna import BolnaClient, BolnaError
 from app.repositories import call_logs as call_logs_repo
 
 router = APIRouter(prefix="/calls", tags=["calls"])
+
+
+@router.get("")
+def list_calls(limit: int = Query(default=20, ge=1, le=200)) -> list[dict]:
+    """Recent calls, newest first, for the live dashboard."""
+    with db_session() as conn:
+        rows = conn.execute(
+            """
+            SELECT id, execution_id, status, direction, recipient_phone,
+                   conversation_duration, total_cost, emergency_flag, created_at,
+                   substr(coalesce(transcript, ''), 1, 240) AS transcript_preview
+            FROM call_logs
+            ORDER BY id DESC
+            LIMIT ?
+            """,
+            (limit,),
+        ).fetchall()
+    return [dict(row) for row in rows]
 
 
 @router.post("", status_code=202)

@@ -161,4 +161,5 @@ def get_appointments(
             appointment["doctor_department"] = doctor["department"] if doctor else None
             appointment["consultation_fee"] = doctor["consultation_fee"] if doctor else None
             appointment["patient_name"] = patient["full_name"] if patient else None
+            appointment["patient_phone"] = patient["phone"] if patient else None
         return appointments
