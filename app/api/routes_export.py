@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from fastapi.responses import Response
+from fastapi.responses import JSONResponse, Response
 
 from app.services import export
 
@@ -25,4 +25,13 @@ def export_calls_csv() -> Response:
         content=export.calls_csv(),
         media_type="text/csv",
         headers={"Content-Disposition": 'inline; filename="hospital_calls.csv"'},
+    )
+
+
+@router.get("/sheets.json")
+def export_sheets() -> JSONResponse:
+    """All datasets at once, for a four-tab Google Sheet sync."""
+    return JSONResponse(
+        content=export.sheets_payload(),
+        headers={"Cache-Control": "no-store"},
     )

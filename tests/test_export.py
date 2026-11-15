@@ -29,3 +29,13 @@ def test_csv_export(client: TestClient) -> None:
     header = response.text.splitlines()[0]
     assert header.startswith("Call time,Status,Phone")
     assert "Patient" in header and "Requirement" in header
+
+
+def test_sheets_payload_has_all_datasets(client: TestClient) -> None:
+    response = client.get("/api/v1/export/sheets.json")
+    assert response.status_code == 200
+    payload = response.json()
+    assert {"calls", "appointments", "doctors", "patients"} <= set(payload)
+    assert payload["doctors"]["headers"][0] == "Name"
+    assert len(payload["doctors"]["rows"]) >= 2
+    assert payload["calls"]["headers"][0] == "Call time"

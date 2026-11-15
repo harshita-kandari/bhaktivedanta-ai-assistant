@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     bolna_base_url: str = "https://api.bolna.ai"
     bolna_agent_id: str = ""
     bolna_webhook_allowed_ip: str = "13.203.39.153"
+    google_sheets_webhook_url: str = ""
 
     emergency_helpline: str = "108"
     front_desk_phone: str = ""

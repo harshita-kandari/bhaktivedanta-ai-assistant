@@ -401,6 +401,139 @@ def call_records() -> list[dict]:
     return records
 
 
+def sheets_payload() -> dict:
+    """All four datasets in one JSON response for a Google Sheet sync."""
+    with db_session() as conn:
+        appointments = [
+            dict(row)
+            for row in conn.execute(
+                """
+                SELECT a.created_at, p.full_name AS patient, p.phone,
+                       d.name AS doctor, d.department, a.appointment_date,
+                       a.time_slot, a.reason, a.source, a.status,
+                       d.consultation_fee
+                FROM appointments a
+                JOIN doctors d ON d.id = a.doctor_id
+                JOIN patients p ON p.id = a.patient_id
+                ORDER BY a.id DESC
+                """
+            )
+        ]
+        doctors = [dict(row) for row in conn.execute("SELECT * FROM doctors ORDER BY name")]
+        patients = [dict(row) for row in conn.execute("SELECT * FROM patients ORDER BY id DESC")]
+
+    calls = call_records()
+    return {
+        "generated_at": datetime.now().isoformat(timespec="seconds"),
+        "calls": {
+            "headers": [
+                "Call time",
+                "Status",
+                "Phone",
+                "Duration (s)",
+                "Cost (INR)",
+                "Patient",
+                "Doctor",
+                "Requirement",
+                "Appointment date",
+                "Appointment time",
+                "Emergency",
+                "Transcript",
+            ],
+            "rows": [
+                [
+                    record["call_time"],
+                    record["status"],
+                    record["phone"],
+                    record["duration_s"],
+                    record["cost_inr"],
+                    record["patient"],
+                    record["doctor"],
+                    record["requirement"],
+                    record["appointment_date"],
+                    record["appointment_time"],
+                    record["emergency"],
+                    record["transcript"],
+                ]
+                for record in calls
+            ],
+        },
+        "appointments": {
+            "headers": [
+                "Booked at",
+                "Patient",
+                "Phone",
+                "Doctor",
+                "Department",
+                "Date",
+                "Time",
+                "Reason",
+                "Source",
+                "Status",
+                "Fee (INR)",
+            ],
+            "rows": [
+                [
+                    item["created_at"],
+                    item["patient"],
+                    item["phone"],
+                    item["doctor"],
+                    item["department"],
+                    item["appointment_date"],
+                    item["time_slot"],
+                    item["reason"] or "",
+                    item["source"],
+                    item["status"],
+                    float(item["consultation_fee"]),
+                ]
+                for item in appointments
+            ],
+        },
+        "doctors": {
+            "headers": [
+                "Name",
+                "Department",
+                "Qualification",
+                "Consultation fee",
+                "Follow-up fee",
+                "Days",
+                "OPD start",
+                "OPD end",
+                "Slot minutes",
+                "Active",
+            ],
+            "rows": [
+                [
+                    doctor["name"],
+                    doctor["department"],
+                    doctor["qualification"],
+                    float(doctor["consultation_fee"]),
+                    float(doctor["followup_fee"]),
+                    doctor["days_available"],
+                    doctor["opd_start"],
+                    doctor["opd_end"],
+                    doctor["slot_minutes"],
+                    "yes" if doctor["active"] else "no",
+                ]
+                for doctor in doctors
+            ],
+        },
+        "patients": {
+            "headers": ["Name", "Phone", "Age", "Gender", "Created"],
+            "rows": [
+                [
+                    patient["full_name"],
+                    patient["phone"],
+                    patient["age"] if patient["age"] is not None else "",
+                    patient["gender"] or "",
+                    patient["created_at"],
+                ]
+                for patient in patients
+            ],
+        },
+    }
+
+
 def calls_csv() -> str:
     import csv
     from io import StringIO

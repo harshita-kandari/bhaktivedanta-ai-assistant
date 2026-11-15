@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
 
 from app.core.config import settings
 from app.core.logging import get_logger
@@ -30,8 +30,22 @@ def _client_ip(request: Request) -> str:
     return host
 
 
+def _push_sheets(url: str, execution_id: str) -> None:
+    """Ask the Apps Script web app to refresh after a call ends."""
+    try:
+        import httpx
+
+        httpx.post(
+            url,
+            json={"event": "call_updated", "execution_id": execution_id},
+            timeout=10,
+        )
+    except Exception as exc:  # noqa: BLE001 - a report must never block the webhook
+        logger.warning("sheets push failed", extra={"error": str(exc)})
+
+
 @router.post("/bolna")
-async def bolna_webhook(request: Request) -> dict:
+async def bolna_webhook(request: Request, background_tasks: BackgroundTasks) -> dict:
     client_host = _client_ip(request)
     allowed_ips = settings.bolna_webhook_allowed_ips
     if allowed_ips and client_host not in allowed_ips | LOOPBACK_HOSTS | {"testclient"}:
@@ -60,6 +74,11 @@ async def bolna_webhook(request: Request) -> dict:
         logger.info("export refreshed", extra={"files": [str(path) for path in written]})
     except Exception as exc:  # noqa: BLE001 - reporting must never fail the webhook
         logger.warning("export refresh failed", extra={"error": str(exc)})
+
+    if settings.google_sheets_webhook_url:
+        background_tasks.add_task(
+            _push_sheets, settings.google_sheets_webhook_url, execution_id
+        )
 
     if data["status"] in TERMINAL_STATUSES:
         logger.info(
