@@ -182,16 +182,24 @@ def build_workbook() -> Workbook:
 
     by_phone = {}
     for appointment in appointments:  # newest first
-        by_phone.setdefault(appointment["phone"], appointment)
+        if appointment.get("source") == "call":
+            by_phone.setdefault(appointment["phone"], appointment)
 
     call_bookings = [item for item in appointments if item.get("source") == "call"]
     used_bookings: set[int] = set()
 
     call_rows = []
     for call in calls:
-        appointment = by_phone.get(call["recipient_phone"]) or _match_by_time(
-            call, call_bookings, used_bookings
-        )
+        appointment = {}
+        if call["status"] == "completed":
+            # Prefer a booking made within 15 minutes of the call; the caller
+            # often gives a number different from the one dialled.
+            appointment = _match_by_time(call, call_bookings, used_bookings)
+            if not appointment:
+                candidate = by_phone.get(call["recipient_phone"])
+                if candidate and candidate["id"] not in used_bookings:
+                    used_bookings.add(candidate["id"])
+                    appointment = candidate
         extracted = _as_json(call.get("extracted_data"))
         call_rows.append(
             [
