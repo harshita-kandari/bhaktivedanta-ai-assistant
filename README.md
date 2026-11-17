@@ -16,6 +16,20 @@ with DeepSeek for conversational intelligence and Bolna for voice calls.
 - DeepSeek AI assistant with OpenAI-style function calling (tool use)
 - Structured JSON logging (console + rotating file `logs/app.log`)
 
+## Screenshots
+
+**Booking page** — form, chat and voice in one place.
+
+![Booking page](docs/screenshots/booking-page.png)
+
+**Live dashboard** — calls and appointments, refreshed every 2 seconds.
+
+![Live dashboard](docs/screenshots/dashboard.png)
+
+**Live sheet** — spreadsheet-style view of all four datasets.
+
+![Live sheet](docs/screenshots/live-sheet.png)
+
 ## Quick start
 
 ```bash
